@@ -1,1 +1,1 @@
-# This folder contains Python code.
+This folder contains archives of Python code.
