@@ -1,1 +1,1 @@
-# This filder contains ipython Jupyter notebooks.
+This filder contains ipython Jupyter notebooks.
