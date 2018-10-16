@@ -1,3 +1,3 @@
 # Code
 
-This repository contains examples of my code.
+This repository contains archives of my code. Contact me to learn more.
