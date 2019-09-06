@@ -253,11 +253,8 @@ class GetWeights(Callback):
                     (self.weight_dict['b_'+str(layer_i+1)], b))
 
 
-
 import matplotlib.gridspec as gridspec
 from matplotlib import cm
-
-wd = gw.weight_dict
 
 def plot_weights(wd):
     '''
