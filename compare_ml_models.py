@@ -139,6 +139,8 @@ def normalize_df(df, norm_x=False):
     return df
 
 
+from sklearn.preprocessing import StandardScaler
+
 def format_for_ml(df, target_feature, train_samples,
                   drop_features=None, scaler=StandardScaler()):
     '''
