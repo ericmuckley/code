@@ -1,6 +1,6 @@
 '''
-This module provides methods and data structures for comparing the
-performance of different machine learning models, including
+This module provides methods and data structures to allow easy comparison
+between the performance of different machine learning models, including
 plotting, spliting train/test input data sets, resampling arrays,
 comparing different fits, file import/export, and multipeak fitting.
 '''
