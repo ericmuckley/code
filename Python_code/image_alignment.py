@@ -47,7 +47,7 @@ def create_video(image_folder, video_name, fps=8, reverse=False):
     
 #load images as numpy arrays
 image_names = glob.glob(
-        r'C:\Users\a6q\Desktop\lab on a QCM\2018-10-05_pedotpss_qcm_images_fast_50X_2sec_6/*')[::5]
+        r'C:\Users\a6q\Desktop\lab on a QCM\images\2018-10-05_pedotpss_qcm_images_fast_50X_2sec_6/*')
 
 image_destination = 'C:\\Users\\a6q\\exp_data\\corrected_images\\'
 
@@ -60,7 +60,7 @@ image_matching_on = False
 line_profiles_on = True
 profile_len = 300
 line_profiles =  np.empty((profile_len, 0))
-
+shift = []
 
 #loop over every image in folder
 for i, img in enumerate(image_names):
@@ -91,6 +91,7 @@ for i, img in enumerate(image_names):
     all_intensity = np.sum(image0, axis=2)
     all_intensity = all_intensity - np.amin(all_intensity)
     all_intensity = all_intensity / np.amax(all_intensity)
+    #all_intensity = np.round(all_intensity)
 
     #extract line profiles
     if line_profiles_on:
@@ -109,6 +110,9 @@ for i, img in enumerate(image_names):
         spline_params = inter.UnivariateSpline(np.arange(profile_len),
                                                profile0, s=1.5)
         spline = spline_params(np.arange(profile_len))        
+        spline = spline - np.min(spline)
+        spline = spline / np.max(spline[20:])
+        
         
         line_profiles = np.column_stack((line_profiles, spline))
     
@@ -133,9 +137,35 @@ for i, img in enumerate(image_names):
     plt.show()
 
 
+    shift0 = np.where(spline==1)[0][0]
+    shift.append(shift0)
+plt.plot(shift)
+plt.show()
+
+#%% heatmaps of interference
+'''
+#loop over each spectrum
+for i in range(len(dic2[key][0])-1):
+    #create arrays of X, Y, and Z values
+    Xf = np.append(Xf, np.repeat(i, len(dic2[key][:,0])))
+    Yf = np.append(Yf, dic2[key][:,0])
+    Zf = np.append(Zf, dic2[key][:,i+1])
+    
+#create x, y, and z points to be used in heatmap
+xf = np.linspace(Xf.min(),Xf.max(),100)
+yf = np.linspace(Yf.min(),Yf.max(),100)
+zf = griddata((Xf, Yf), Zf, (xf[None,:], yf[:,None]), method='cubic')
+#create the contour plot
+CSf = plt.contourf(xf, yf, zf, 100, cmap=plt.cm.rainbow, 
+                   vmax=np.nanmax(Zf), vmin=np.nanmin(Zf))
+plt.colorbar()
+label_axes('Time', 'F (MHz)')
+plt.show()
+'''   
 
 
-    '''
+
+'''
     if image_matching_on:
         #save first image as reference for subsequent images
         if i == 0:
@@ -194,7 +224,7 @@ for i, img in enumerate(image_names):
     plt.show()
 
     cv2.imwrite(image_destination+str(i).zfill(5)+'.jpg', image_corr)
-    '''
+'''
 
 
 #%% combine figs into video

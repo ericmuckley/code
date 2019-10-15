@@ -42,21 +42,30 @@ def stack_cvs(df):
 #%%
 
 # data file to import
-filename = r'C:\Users\a6q\exp_data\Pt_H2SO4_CV_CV.dat'
+filename = r'C:\Users\a6q\exp_data\cv\B_CV_1_CV.dat'
 
 
 #%%
 
 
 # import the file
-df = pd.read_table(
-        filename, skiprows=39, sep=',', header=None, names=['E', 'I'])
+df = pd.read_table(filename, skiprows=39, sep=',',
+                   header=None, names=['E', 'I'])
+
+
 
 # plot all raw scans
-plt.plot(df['E'], -1e6*df['I'])
+plt.plot(df['E'], 1e6*df['I'])
 plot_setup(labels=['E (V)', 'I (uA)'])
 plt.show()
 
+
+curr = 1e6*df['I'].values
+pos_curr = [i for i in curr if i>0]#+-[int(len(curr)/2):]
+plt.plot(pos_curr)
+
+
+'''
 # get array of cv scans stacked by column
 cv_arr = stack_cvs(df)
 
@@ -78,13 +87,15 @@ for cv_i in range(1, len(cv_arr[0])):
 plot_setup(labels=['E (V)', 'I (uA)'])
 plt.legend(ncol=3)
 plt.show()
-
+'''
+'''
 # plot cv areas
 plt.plot(np.arange(len(areas))+1, areas, marker='o')
 plot_setup(labels=['CV number', 'CV area'])
 plt.show()
-
+'''
 #%%
+'''
 xc = 300
 yc = .4
 # loop through each cv scan and plot it
@@ -99,6 +110,9 @@ plt.axhline(y=yc, c='k', lw=1)
 plot_setup(labels=['Time', 'I (uA)'])
 plt.legend(ncol=3)
 plt.show()
+
+'''
+
 
 
 

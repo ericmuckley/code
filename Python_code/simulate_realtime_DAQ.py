@@ -242,8 +242,8 @@ for i in range(1, pred_steps+1):
     ax4.set_ylim(0, 99)
     
     #save plot as image file
-    save_pic_filename = 'gif_frames2018-04-06\\frame_'+format(i)+'.jpg'
-    plt.savefig(save_pic_filename, format='jpg', dpi=150)
+    #ave_pic_filename = 'gif_frames2018-04-06\\frame_'+format(i)+'.jpg'
+    #plt.savefig(save_pic_filename, format='jpg', dpi=150)
     
     plt.show()
     plt.close(fig)
@@ -291,7 +291,7 @@ for i in range(pred_steps):
     ax2.set_xlabel('Time (hours)', fontsize=label_size)
     ax2.set_ylim(0,99)
     
-    save_pic_filename = 'far_future_predictions\\frame_'+format(i)+'.jpg'
-    plt.savefig(save_pic_filename, format='jpg', dpi=150)
+    #save_pic_filename = 'far_future_predictions\\frame_'+format(i)+'.jpg'
+    #plt.savefig(save_pic_filename, format='jpg', dpi=150)
 
     plt.show()

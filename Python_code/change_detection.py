@@ -1,48 +1,97 @@
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.stats import linregress
+from scipy.signal import savgol_filter
 
 def single_exp(x, a, tau, y0):
     return y0 + a*np.exp(-(x)/tau)
 
-x  = np.arange(-20, 160, 1).astype(float)+1
-noise = np.random.random(len(x))/.8
-#y_exp = np.append( np.full(15, 0), single_exp(x[15:], 2, 1, -.05))
-y_exp = np.append(np.full(90, 0), 1+np.full(90, 0))
-y = noise + y_exp
 
-  
-pad = 10
 
-change = np.zeros_like(x).astype(float) 
-norm_diff = np.zeros_like(x).astype(float)
-norm_std =  np.zeros_like(x).astype(float)
-mean = np.zeros_like(x).astype(float)
 
-for i in range(2*pad, len(x)):
-    #get most recent array and previous array, each of length 'pad',
-    #with one unused buffer point in between
-    y2, y1 = y[i-pad:i], y[i-2*pad:i-pad]
+def get_baseline(x, y, samples=4):
+    # get baseline response of a signal using the first samples
+    pass
+
+
+
+def get_slope(raw_sig, window=6):
+    # get the slope of signal (raw_sig) using only the most
+    # recent points (window).
+    # get x values for slope calculation
+    x = np.arange(window)
+    # get sample of raw y values for slope calculation
+    sample = raw_sig[-window:]
+    # standard deviation in sample
+    std = np.std(sample)
+    # calculate slope
+    slope = np.abs(linregress(x, sample)[0])
+    return slope, std
+   
     
-    #get normalized diff between present window and previous window
-    norm_diff[i] = np.abs((
-            np.mean(y2)-np.mean(y1))/((np.mean(y2)+np.mean(y1))/2))
+def get_deviance(raw_sig, window=6):
+    # get the deviance of a point from signal (raw_sig) using only the most
+    # recent points (window).
+    raw_sig = np.array(raw_sig)
+    # get sample of raw signal values
+    sample = raw_sig[-window:-1]
+    mean = np.mean(sample)
+    std = np.std(sample)
+    # sample to test
+    x = raw_sig[-1]
     
-    #get noramlized std of window
-    norm_std[i] = np.abs(np.std(y2))#/np.mean(y2))
+    # deviance between sample to test and mean
+    dev = np.abs(x - mean - std)
+    return dev
+    
 
-    mean[i] = np.mean(y2)
 
-    #is change significant?
-    if norm_diff[i] / norm_std[i] > 2: change[i-3] = 1
 
-all_data = np.column_stack((x, y, mean, norm_std, y+norm_std, y-norm_std, norm_diff))
 
-plt.scatter(x, y, alpha=.5, label='data')
-plt.plot(x, norm_diff, label='diff')
-plt.plot(x, norm_std, label='std')
-plt.plot(x, norm_diff/norm_std/10, label='diff/std')
-plt.plot(x, change, linestyle=':', c='k', label='change?')
+df = pd.read_table('exp_data\\cupcts_data.txt')[::10]
+#df = pd.read_table('exp_data\\mxene_step_data.txt')[::1]
+
+
+
+response0 = df['delta_m']
+slopes = []
+stds = [] 
+devs = []
+
+slope_limit = 0.01
+window_len = 6
+samples = 6
+
+fig = plt.figure(figsize=(12, 5))
+
+
+# loop over window of interest in response
+for i in range(samples, len(response0)):
+
+    response = response0[:i]
+    time = df['time'][:i]
+    
+    slope0, std0 = get_slope(response)
+    dev0 = get_deviance(response)
+    stds.append(std0)
+    slopes.append(slope0)
+    devs.append(dev0)
+
+
+plt.scatter(time, (response/30), c='k', alpha=0.5, s=3, label='signal')
+
+plt.plot(time[samples-1:], slopes, c='b', lw=1, label='slope')
+#plt.plot(time[samples-1:], stds, c='g', lw=1, label='std')
+plt.plot(time[samples-1:], devs, c='r', lw=1, label='devs')
+plt.axhline(y=0, c='k', lw=1)
 plt.legend()
 plt.show()
 
+
+#plt.figure(figsize=(12, 5))
+#plt.plot(stds)
+
+
+#plt.figure(figsize=(12, 5))
+#plt.plot(slopes)

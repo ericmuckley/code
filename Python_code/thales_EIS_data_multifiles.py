@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 from matplotlib import colors, ticker, cm
+import csv
+
 
 def config_plot(xlabel='x', ylabel='y', size=16,
                setlimits=False, limits=[0,1,0,1]):
@@ -20,11 +22,80 @@ def config_plot(xlabel='x', ylabel='y', size=16,
 
 #%% import data
 
-# filename with Bode plots
-bodefile = r'C:\Users\a6q\exp_data\2019-10-08-WS2-5layer-wrinkled\2019-10-08-ws2wrinkled-rh-bodelist.csv' 
+# filenames with Bode plots
+#filenames = [
+#        r'C:\Users\a6q\exp_data\2019-07-02_ws2_5layer_rh_bodelist.csv' ]
+
+filename = r'C:\Users\a6q\exp_data\2019-07-02_ws2_5layer_rh_bodelist.csv' 
+
+
+#%% organize file titles
+
+# open file again as raw csv to extract file titles
+with open(filename, newline='') as csvfile:
+    titlesraw = list(csv.reader(csvfile))
+# get first file title
+titles = [titlesraw[1][0].split(': ')[1].split(' - ')[0]]
+# append subsequent file titles      
+[titles.append(t[1]) for t in titlesraw if len(t) == 5 if 'File...' in t[0]]
+    
+
+
+#%% organize data
+
+# import data
+bodedf = pd.read_csv(filename, skiprows=16, skip_blank_lines=True,
+                       error_bad_lines=False, warn_bad_lines=False, sep=',')
+
+# convert str to float, coerce to NaN, drop NaN
+bodedf = bodedf.apply(pd.to_numeric, errors='coerce').dropna()
+
+bodedata = bodedf.values[:, 1:]
+bodedata = np.reshape(bodedata, (-1, 3*len(titles)), order='F')
+
+df = pd.DataFrame()
+
+
+freqnum = len(np.unique(bodedf['Frequency/Hz']))
+
+
+
+'''
+for t in titlesraw:
+    if len(t) == 5:
+        if 'File...' in t[0]:
+            titles.append(t[1])
+'''        
+  
+
+
+
+#titledata
+
+
+'''
+titledata = pd.read_table(filename, skip_blank_lines=True, usecols=[0],
+                        header=None,
+                        error_bad_lines=False,
+                        warn_bad_lines=False,
+                        sep=',')
+
+'''
+#%%
 # read in file
-bodedata = pd.read_csv(bodefile, skiprows = 16, skip_blank_lines=True,
-                       error_bad_lines=False, warn_bad_lines=False, sep=',') 
+
+
+
+#bodedata = pd.read_csv(bodefile, skiprows = 16, skip_blank_lines=True,
+#                       error_bad_lines=False, warn_bad_lines=False, sep=',') 
+
+
+
+
+#%%
+
+
+'''
 # convert str to float, coerce to NaN, drop NaN
 bodedata = bodedata.apply(pd.to_numeric, errors='coerce').dropna() 
 
@@ -48,10 +119,11 @@ rez = np.multiply(ztot, np.cos(phase))
 imz = np.multiply(ztot, np.sin(phase))
 
 
-
+'''
 
 
 #%% plot results 
+'''
 color_spec = plt.cm.seismic(np.linspace(0,1,spectranum))
 
 #plot Bode Z data
@@ -83,8 +155,10 @@ lowfreqz = ztot[-1,:]
 plt.plot(time[5:], lowfreqz[5:], marker='o')
 config_plot('Time (hrs)', 'Z @ last freq. ($\Omega$)')
 plt.show()
+'''
 
 #%% format data into Origin-ready matrices
+'''
 all_bode_z = freq
 all_bode_phase = freq
 all_nyquist = freq
@@ -94,9 +168,9 @@ for i in range(spectranum):
     all_bode_phase = np.column_stack((all_bode_phase, phasedeg[:,i]))
     all_nyquist = np.column_stack((all_nyquist, rez[:,i]))
     all_nyquist = np.column_stack((all_nyquist, imz[:,i]))
-
+'''
 #%%plot heatmaps
-
+'''
 #create x, y, and z points to be used in heatmap
 xf = np.array(list(range(spectranum)))
 yf = freq
@@ -141,3 +215,4 @@ plt.colorbar()
 config_plot('Spectra number', 'Frequency (Hz)')
 plt.title('log(Z) ($\Omega$)', fontsize=16)
 plt.show()
+'''

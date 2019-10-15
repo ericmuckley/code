@@ -1,10 +1,11 @@
 import sys, glob, os, numpy as np
+import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from matplotlib.colors import ListedColormap
 from matplotlib.pyplot import figure
-
+from itertools import groupby
 
 import time
 import datetime
@@ -12,12 +13,13 @@ from scipy.optimize import curve_fit
 
 import scipy.signal as filt
 from scipy.signal import savgol_filter
-
+from scipy.stats import linregress
 import scipy.interpolate as inter
 from scipy.interpolate import splrep
 from scipy.interpolate import splev
 from scipy.interpolate import griddata
 
+import numpy.polynomial.polynomial as poly
 
 
 
@@ -343,6 +345,36 @@ def remove_outliers(spectra, num_of_outliers=5):
 
 
 
+def remove_outliers2(vec, win_len=5):
+    #removes outlier points from vector "vec" using a sliding window
+    # of length "win_len" by replacing outlire point by average of its
+    #two adjacent neighboring points
+
+    vec2 = np.copy(vec)
+
+
+    tot_outliers = 0
+
+    #loop over each point in vector
+    for i in range(1, len(vec) - win_len):
+          
+        #get sliding window, median of window, std of window
+        window0 = vec[i:i+win_len]
+        median0 = np.median(window0)
+        std0 = np.std(window0)
+        
+        #calculate distance of point from the median
+        outlier_distance = np.abs(vec[i] - median0)
+
+        if outlier_distance > std0*2:
+            vec2[i] = np.average([vec[i-1], vec[i+1]])
+            tot_outliers += 1
+    print('removed %i outliers' %tot_outliers)
+    return vec2
+
+
+
+
 
 def get_eis_params(data0):
     '''Calculates impedance parameters'''
@@ -427,6 +459,58 @@ def get_peaks(vec, n=3):
     return peak_indices, peak_vals
 
 
+def normalize_vec(vec):
+    #normalize intensity of a vector from 0 to 1
+    vec2 = np.copy(vec)
+    vec2 -= np.min(vec2)
+    vec2 /= np.max(vec2)
+    return vec2    
+    
+    
+
+def get_band_num(freq):
+    #return the harmonic number at which spectrum was measured at
+    if freq[0]/1e6 < 20:
+        band = 1
+    if 25 < freq[0]/1e6 < 35:
+        band = 3
+    if 45< freq[0]/1e6 < 55:
+        band = 5  
+    if 65 < freq[0]/1e6 < 75:
+        band = 7
+    return band
+
+
+
+
+#%% import data  
+raw_data = pd.read_table(r'exp_data\2018-10-16_pp_qcm_CV')
+
+rh_filename = r'exp_data\2018-10-16_rh'
+rh = [rh0 for rh0,i in groupby(pd.read_table(rh_filename)['p_abs'])]
+
+#%% background subtraction
+df = raw_data.copy()
+df['V'] = np.round(df['V'], decimals=3)
+v = np.array(df['V'])
+
+for col in df:
+    df[col] = df[col] - df[col].iloc[0]
+    
+    
+    
+    if col != 'V':
+        plt.plot(df['V'], df[col])
+plt.show()
+
+times = np.linspace(0, 19.5, num=(len(list(df))-1))+.433
+
+
+
+df_abs = df.copy()
+for i in range(1, len(list(df))):
+    
+    df_abs[list(df)[i]] = np.abs(df_abs[list(df)[i]])
 
 
 
@@ -435,117 +519,167 @@ def get_peaks(vec, n=3):
 
 
 
-#%% USER INPUTS
- 
+
+#%%
+
+
+'''
 #indices to start, stop, and every nth points to skip per data file:
 index1, index2, skip_n = 6, -1, 1    
 
 #folder with measured data files
 data_folder = glob.glob(
-        'C:\\Users\\a6q\\exp_data\\2018-10-16_pp_qcm/*')
+        'C:\\Users\\a6q\\exp_data\\2018-10-05_pp_qcm/*')
+
+#sort data files by time modified
+data_folder.sort(key=os.path.getmtime)
+    
+# get timestamp for each data file
+data_time = [datetime.datetime.strptime(time.ctime(os.path.getmtime(
+        file)),'%a %b  %d %H:%M:%S %Y') for file in data_folder]
+    
 
 print('found ' + format(len(data_folder)) + ' data files')
 
 #allow expansion/contraction of spectra length
 new_spec_len = 1000
 
-#file with pressure data   
-pressure_file = 'exp_data\\2018-10-16_rh'
+new_f_length = 100
 
 
-#determine whether to fit to BvD circuit:
-bvd_fit = False
-#set number of peaks to fit
-peaks_to_fit = 9
-
-#%%organize input data
-
-#get times for each pressure
-time_table = get_time_table(pressure_file)
-rh_list = list((np.array(time_table['pressure']).astype(int)))
-
-#find number of measured frequency bands, list of bands,
-#and dictionary of frequency values associated with each band
-band_num, band_list, freq_dict = get_band_info(
-        data_folder, new_spec_len, index1, index2, skip_n)
-
-#get good data files saved just before pressure changes 
-good_files = get_good_files(time_table, data_folder, band_num=band_num)
-
-#get dictionary for saving all the measured spectra
-spec_dict = get_spectrum_dict(band_list, new_spec_len, time_table, freq_dict)
+specmat1 = np.zeros((new_f_length, 1))
+specmat3 = np.zeros((new_f_length, 1))
+specmat5 = np.zeros((new_f_length, 1))
+specmat7 = np.zeros((new_f_length, 1))
 
 
 
-#%% examine each data file
-
-#make empty arrays for max and resonant frequencies 
-f_res = np.zeros((len(time_table), band_num))
-G_max = np.zeros((len(time_table), band_num))
-
-#BvD equivalent circuit RLC parameters 
-R_mat = np.zeros((len(time_table), peaks_to_fit))
-L_mat = np.zeros((len(time_table), peaks_to_fit))
-C_mat = np.zeros((len(time_table), peaks_to_fit))
-D_mat = np.zeros((len(time_table), peaks_to_fit))
-peak_num_mat = np.zeros((len(time_table), band_num))
-peak_ind_mat = []#np.zeros((len(rh_list), peaks_to_fit))
-peak_val_mat = []#np.zeros((len(rh_list), peaks_to_fit))
-
-
-
-
-fit_params_mat = np.zeros((len(rh_list), peaks_to_fit*5))
-
-#peaks found from BvD fitting
-single_peaks = np.zeros((new_spec_len, peaks_to_fit))
+#loop over each individual csv file
+for i in range(len(data_folder)):#[::43]:   
     
-
+    print('spectrum %i/%i' %(i+1, len(data_folder)))
     
-    
-    
-#loop over each pressure (each individual data file)
-for i in range(len(good_files)): 
-
     #read data
-    data0 = pd.read_csv(good_files[i],
+    data0 = pd.read_csv(data_folder[i],
                         skiprows=1).iloc[index1:index2:skip_n,:]
     
-    
-    
-    #see what frequency band spectrum was measured at
-    band_col = get_band_col(band_list, data0)
-    
-    all_bands = True
-    #select certain bands
-    if band_col == 3:        
-    #if all_bands == True:
-    
-        #record pressure level
-        rh0 = rh_list[int(i/band_num)]
-        print(format(rh0)+'% RH')
-    
-    
-        
-        #get frquency and conductance (G) from file
-        freq0, G0 = get_eis_params(data0)
-        
-        #squeeze spectrum to a specified length
-        freq0, G0 = vec_stretch(freq0, vecy0=G0, vec_len=new_spec_len)
-        freq0 *= 1e-6
-        #filter and smooth conductance
-        G0 = remove_outliers(G0)
-        spline_fit = inter.UnivariateSpline(freq0, G0, s=5e-9)
-        G0_spline = spline_fit(freq0)
-        G0_savgol = savgol_filter(G0, 21, 2)#, mode='nearest')
-        G0 = G0_spline
-        G0 -= np.min(G0)
-        #G0 /= np.max(G0)
-        G0 *= 1e3
-        
 
 
+    #get frequency and conductance (G) from file
+    freq0, G0 = get_eis_params(data0)
+
+
+
+    band = get_band_num(freq0)
+
         
+    f_short = np.linspace(np.amin(freq0), np.amax(freq0), new_f_length)
+
+    G0 = remove_outliers2(G0)
+    G0 = remove_outliers2(G0)
+    G0 = remove_outliers2(G0)
+    
+     
+
+    g_savgol = savgol_filter(G0, 31, 1)#, mode='nearest')
+    g_savgol = normalize_vec(g_savgol)
+    
+    spline_params = inter.UnivariateSpline(freq0, g_savgol, s=.02)
+    spline = spline_params(f_short)
+    
+    
+    if band==3 or band==5 or band==7: 
+        #linear fit to subtract background
+        lin_bg = linregress([f_short[0], f_short[-1]],
+                            [spline[0], spline[-1]])
+        spline -= (f_short - f_short[0])*lin_bg.slope
+        
+    spline = normalize_vec(spline)
+    
+
+    
+    
+    
+    G0 = normalize_vec(G0)
+    
+    plt.plot(freq0, G0, label='G0')
+    plt.plot(f_short, spline, label='spline')
+    plt.plot(freq0, g_savgol, label='savgol')
+    #plt.plot(f_short, normalize_vec(poly_fit), label='poly')
+    plt.legend()
+    plt.show()
+
+    
+    #determine band and populate matrices to hold spectral data
+    if band == 1:
+        specmat1[:,0] = f_short
+        specmat1 = np.column_stack((specmat1, spline))
+        
+    if band == 3:
+        specmat3[:,0] = f_short
+        specmat3 = np.column_stack((specmat3, spline))
+        
+    if band == 5: 
+        specmat5[:,0] = f_short
+        specmat5 = np.column_stack((specmat5, spline))
+  
+    if band == 7:
+        specmat7[:,0] = f_short
+        specmat7 = np.column_stack((specmat7, spline))
+
+
+
+'''
+
+
+#%%
+'''    
+specmat_vec = [specmat1, specmat3, specmat5, specmat7]
+    
+#loop over each band in band dictionary
+for mat in specmat_vec:
+
+    #reshape spec_mat into columns
+    Xf, Yf, Zf = np.array([]), np.array([]), np.array([])
+    
+    #loop over each pressure
+    for i in range(len(mat[0])-1):
+        
+        #set X values = pressure 
+        Xf = np.append(Xf, np.repeat(i, len(f_short)))
+        #set Y values = frequency
+        Yf = np.append(Yf, mat[:,0])
+        #set Z values = G
+        Zf = np.append(Zf, mat[:,i+1])
+    
+    
+    
+    # create x-y points to be used in heatmap
+    xf = np.linspace(Xf.min(),Xf.max(),100)
+    yf = np.linspace(Yf.min(),Yf.max(),100)
+    # Z is a matrix of x-y values
+    zf = griddata((Xf, Yf), Zf, (xf[None,:], yf[:,None]), method='cubic')
+    # Create the contour plot
+    CSf = plt.contourf(xf, yf, zf, 100, cmap=plt.cm.rainbow, 
+                       vmax=np.nanmax(Zf), vmin=np.nanmin(Zf))
+    plt.colorbar()
+    label_axes('Time', 'F$_0$ (Hz/cm$^2$)')
+    plt.show()
+
+'''
+
+
+
+
+
+ #%%
+
+   
+    
+'''    
+        
+              
+               
         #save resonant and maximum of spectrum
         f_res0 = freq0[np.argmax(G0)]
         f_res[int(i/band_num)][band_col] = f_res0
@@ -732,10 +866,10 @@ for i in range(len(good_files)):
         plt.show()
 
 
-
+'''
 
 #%% normalize f_res matrix by harmonic number
-
+'''
 f_res_norm = np.zeros_like(f_res)
 
 for i in range(len(f_res[0])):
@@ -745,13 +879,13 @@ plt.legend()
 label_axes('RH (%)', '$\Delta$f/n (Hz/cm$^{2}$)')
 plt.show()
 
-
+'''
 
 
 #%% animate BVD circuit parameter extraction
     
 
-    
+'''  
 ls = 18
 s = 10
 
@@ -814,7 +948,7 @@ plt.close(fig)
 plt.close("all")
 
 
-
+'''
 
 
 
@@ -856,7 +990,7 @@ for band in band_list:
 
 
 #%% plot analysis results
-
+'''
 
 #plot change in spectra maximum       
 [plt.plot(time_table['pressure'], G_max[:,i] - G_max[0,i],
@@ -877,12 +1011,13 @@ plt.show()
 
 
 
-'''
+
 #if BvD fitting was used:
 if bvd_fit == True:
 
     #plot change in R from BVD circuit
-    [plt.plot(time_table['pressure'], R_mat[:,i] - R_mat[0,i], label='peak-'+format(i+1) for i in range(peaks_to_fit)]      
+    [plt.plot(time_table['pressure'], R_mat[:,i] - R_mat[0,i],
+              label='peak-'+format(i+1) for i in range(peaks_to_fit)]      
     label_axes('RH (%)', 'BvD: $\Delta$ R ($\Omega$)')
     plt.legend(fontsize=14)
     plt.show()
@@ -908,11 +1043,11 @@ if bvd_fit == True:
     label_axes('RH (%)', 'BvD: $\Delta$ D (F)')
     plt.legend(fontsize=14)
     plt.show()
-'''
 
 
 
-'''
+
+
     #plot number of peaks detected
     [plt.plot(time_table['pressure'], peak_num_mat[:,i],
               label=band_list[i]) for i in range(band_num)]      

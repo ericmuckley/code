@@ -84,7 +84,7 @@ def find_diff2D(p1, p2):
 #%% Constants
 
 f0 = 5e6 #fundamental resonant frequency of crystal
-n = 9 #harmonic number
+n = 3 #harmonic number
 w = 2*np.pi*f0*n #angular frequency 
 
 mu_q = 2.947e10 #shear modulus of AT-cut quatz in Pa
@@ -105,11 +105,11 @@ eta_b = 18.6e-6 #viscosity of bulk air (25 C) in Pa s
 step_num = 300
 print('grid contains %d points' %step_num**2)
 #mu_range = np.logspace(1, 15, step_num).astype(float)
-mu_range = np.linspace(1e6, 2.1e6, step_num).astype(float)
+mu_range = np.linspace(1e6, 3e6, step_num).astype(float)
 #eta_range = np.logspace(-12, 12, step_num).astype(float)
-eta_range = np.linspace(0, 1.5e-4, step_num).astype(float)
+eta_range = np.linspace(0, 1.5e-6, step_num).astype(float)
 
-exp_data = pd.read_table('exp_data\\pedotpss_7thovertone_dd_df.txt')
+exp_data = pd.read_csv('exp_data\\df_dd_p3ht_in_water.csv')
 
 
 
@@ -118,6 +118,7 @@ exp_data = pd.read_table('exp_data\\pedotpss_7thovertone_dd_df.txt')
 starttime = time.time()
 results0 = []
 
+time_sol = []
 rh_sol = []
 mu_sol= []
 eta_sol = []
@@ -126,10 +127,10 @@ eta_sol = []
 #iterate over each time step
 for timestep in range(len(exp_data)):
     print('time step '+format(1+timestep)+' / '+format(len(exp_data)))
-    df_exp = exp_data['df_exp'][timestep]
+    df_exp = exp_data['df_exp'][timestep]*1e3
     dd_exp = exp_data['dd_exp'][timestep]
-    rh0 = exp_data['rh'][timestep]
-
+    #rh0 = exp_data['rh'][timestep]
+    time0 = exp_data['time'][timestep]
 
     #lists for df and dd "matches"
     dfm = []
@@ -202,7 +203,9 @@ for timestep in range(len(exp_data)):
         min_diff_ind = np.argmin(all_diffs[:,2])
         mu_sol0 = all_diffs[min_diff_ind][0]
         eta_sol0 = all_diffs[min_diff_ind][1]
-        rh_sol.append(rh0)
+        #rh_sol.append(rh0)
+        time_sol.appemnd(time0)
+        
         mu_sol.append(mu_sol0)
         eta_sol.append(eta_sol0)
 
@@ -259,10 +262,10 @@ for timestep in range(len(exp_data)):
     #ax_int.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     #ax_mu.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
-    ax_int.text(1.14, 132, format(rh0)+'% RH',
-                     horizontalalignment='center',
-                     verticalalignment='center',
-                     fontsize=20)
+    #ax_int.text(1.14, 132, format(rh0)+'% RH',
+    #                 horizontalalignment='center',
+    #                 verticalalignment='center',
+    #                 fontsize=20)
 
 
 
@@ -272,11 +275,12 @@ for timestep in range(len(exp_data)):
     fig0.set_size_inches(12, 6)
     #save plot as image file   
 
-    if rh0 < 10:
-        save_pic_filename = 'exp_data\\save_figs2\\fig_0'+format(rh0)+'.jpg'
-    else:
-        save_pic_filename = 'exp_data\\save_figs2\\fig_'+format(rh0)+'.jpg'
-    plt.savefig(save_pic_filename, format='jpg', dpi=150)
+
+    #if rh0 < 10:
+    #    save_pic_filename = 'exp_data\\save_figs2\\fig_0'+format(rh0)+'.jpg'
+    #else:
+    #    save_pic_filename = 'exp_data\\save_figs2\\fig_'+format(rh0)+'.jpg'
+    #plt.savefig(save_pic_filename, format='jpg', dpi=150)
 
     plt.show()
 
@@ -289,6 +293,7 @@ for timestep in range(len(exp_data)):
 
 #%% compile images into video
 
+'''
 def create_video(image_folder, video_name, fps=8):
     #create video out of images saved in a folder
     import cv2
@@ -309,7 +314,7 @@ fps = 5
 
 create_video(image_folder, video_name, fps)
 
-
+'''
       
 
 #%% organize results

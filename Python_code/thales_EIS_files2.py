@@ -7,7 +7,6 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import datetime
 from scipy import optimize
-from numpy import NaN, Inf, arange, isscalar, asarray, array
 from timeit import default_timer as timer
 from scipy.signal import savgol_filter
 import shutil
@@ -18,93 +17,63 @@ plt.rcParams['ytick.labelsize'] = 15
 
 
 
-
-
-
-def label_axes(xlabel='x', ylabel='y', size=18):
+#define general functions
+def config_plot(xlabel='x', ylabel='y', size=16,
+               setlimits=False, limits=[0,1,0,1]):
     #set axes labels and size
-    from matplotlib import rcParams
     plt.rcParams['xtick.labelsize'] = size 
     plt.rcParams['ytick.labelsize'] = size
+    plt.rcParams.update({'figure.autolayout': True})
     plt.xlabel(str(xlabel), fontsize=size)
     plt.ylabel(str(ylabel), fontsize=size)
-
-
+    #set axis limits
+    if setlimits:
+        plt.xlim((limits[0], limits[1]))
+        plt.ylim((limits[2], limits[3]))
 
 
 
 def get_time_table(filename, time_col_name, pressure_col_name):
-    
     '''Read file which contains timestamps and changing pressures. The 
     function retuns a dataframe with times and corresponding pressures.
     '''
     data = pd.read_table(str(filename))
-    
     p_raw = np.array(data[pressure_col_name])
-    
     time_table = []
-    
     for i in range(len(data)-1):
-        
         #check if pressure changes
         if p_raw[i] != p_raw[i+1]:
-    
             time_table.append([data[str(time_col_name)].iloc[i],
                                data[str(pressure_col_name)].iloc[i]])
                 
     time_table = pd.DataFrame(time_table, columns=['time', 'pressure'])
-    
     #add column for formatted timestamps
     ts = [datetime.datetime.strptime(step,'%Y-%m-%d %H:%M:%S.%f'
                                      ) for step in time_table['time']]
     time_table['ts'] = ts
-    
-    
     return time_table
-
-
-
-
-
-
-
 
 
 def get_good_files(time_table, data_folder):
     '''Collect the data files from "datafolder" which were created
     just before the pressure changes occure in the "time_table"
     time/pressure table.'''
-    
     #sort data files by time modified
     data_folder.sort(key=os.path.getmtime)
-    
     # get timestamp for each data file
     data_time = [datetime.datetime.strptime(time.ctime(os.path.getmtime(
             file)),'%a %b  %d %H:%M:%S %Y') for file in data_folder]
-    
     #make list of good files which were measured just pressure changes
     good_files = []   
-
     #loop over each pressure
     for i in range(len(time_table)):
-        
         #loop over each data file in folder
         for j in range(len(data_folder)): 
-    
             #check if data file was created before timestep changed
             if data_time[j] < time_table['ts'].iloc[i]:
-                
                 good_file0 = data_folder[j] 
-            
-        good_files.append(good_file0) 
-
-    
+        good_files.append(good_file0)     
     return  np.array(good_files)
-
-
-
-
-
 
 
 
@@ -112,15 +81,11 @@ def rename_ism_files(data_folder_path, time_table):
     '''Take time-series .ism files created by Thales, match them
     with pressures/RH values, and copy the .ism files to a new folder
     with new filenames to reflect the pressure/RH for each file.'''
-    
     #make new directory for files separated by pressure
     folder_labeled = data_folder_path + '_labeled'
-    
-    if not os.path.exists(folder_labeled): os.makedirs(folder_labeled)
-    
-    
+    if not os.path.exists(folder_labeled):
+        os.makedirs(folder_labeled)
     #copy good files into new folder and rename by pressure level
-    
     for i in range(len(time_table)):
     
         #get pressure in proper format
@@ -129,17 +94,9 @@ def rename_ism_files(data_folder_path, time_table):
         rh = str(rh0)
         if rh0 < 10: rh = '0'+format(rh0)
 
-    
         new_filename = os.path.join(folder_labeled, rh + '.ism')
     
         shutil.copy2(good_files[i], new_filename)
-
-
-
-
-
-
-
 
 
 

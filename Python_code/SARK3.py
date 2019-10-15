@@ -450,15 +450,15 @@ index1, index2, skip_n = 6, -1, 1
 
 #folder with measured data files
 data_folder = glob.glob(
-        'C:\\Users\\a6q\\exp_data\\2018-07-09mxene/*')
+        'C:\\Users\\a6q\\exp_data\\2018-10-16_pp/*')
 
 print('found ' + format(len(data_folder)) + ' data files')
 
 #allow expansion/contraction of spectra length
-new_spec_len = 10000
+new_spec_len = 1000
 
 #file with pressure data   
-pressure_file = 'exp_data\\2018-07-09_rh'
+pressure_file = 'exp_data\\2018-10-16_rh'
 
 #determine whether to fit to BvD circuit:
 bvd_fit = False
