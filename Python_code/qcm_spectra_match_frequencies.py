@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Sep 20 09:58:08 2019
-Resamples QCM spectra with dynmaic x-axes for construction of single
+Resamples QCM spectra with dynamic x-axes for construction of single
 matrix with shared x-axis.
 """
 
 #%%  USER INPUTS
 
-filename = '2019-09-13_12-54__qcm_n=1_spectra.csv'
+filename = 'exp_data\\2019-07-31_14-14__qcm_n=11_spectra.csv'
 
 # specify length of the new array to hold all spectra
 new_length = 1000
@@ -42,7 +42,7 @@ def plot_setup(labels=['X', 'Y'], size=16, setlimits=False, limits=[0,1,0,1],
         plt.tight_layout()
 
 
-def arr_resample(arr, new_len=100, new_xlims=None, vec_scale='lin', k=1, s=0):
+def arr_resample(arr, new_len=100, new_xlims=[], vec_scale='lin', k=1, s=0):
     '''
     Resamples (stetches/compresses) a 2D array by using a spline fit.
     Array should be shape [[x1, y1, ...ym], ...[xn, yn, ...yn]] where the
@@ -58,10 +58,11 @@ def arr_resample(arr, new_len=100, new_xlims=None, vec_scale='lin', k=1, s=0):
     if vec_scale == 'log':
         new_scale = np.geomspace
     # get new x-limits for the resampled array
-    if new_xlims is None:
-        new_x1, new_x2 = arr[0, 0], arr[-1, 0]
-    else:
+    if len(new_xlims) > 1:
         new_x1, new_x2 = new_xlims[0], new_xlims[1]
+    else:
+        new_x1, new_x2 = arr[0, 0], arr[-1, 0]
+
     # create new x values
     arrx = new_scale(new_x1, new_x2, new_len)
     # create new empty array to hold resampled values
@@ -69,7 +70,7 @@ def arr_resample(arr, new_len=100, new_xlims=None, vec_scale='lin', k=1, s=0):
     stretched_array[:, 0] = arrx 
     # for each y-column, calculate parameters of degree-3 spline fit
     for col in range(1, len(arr[0])):
-        spline_params = splrep(arr[:, 0], arr[:, col], k=int(k), s=s)
+        spline_params = splrep(arr[:, 0], arr[:, col], k=int(k), s=0)
         # calculate spline at new x values
         arry = splev(arrx, spline_params)
         # populate stretched data into resampled array
@@ -105,7 +106,7 @@ def heatmap_from_array(arr):
 data = pd.read_csv(filename)
 
 # initialize lowest and highest frequency values
-low_freq, high_freq = np.inf, -np.inf
+low_freq, high_freq = -np.inf, np.inf
 
 # loop over each 3rd column in data file, skipping the reactance columns
 for col in range(0, len(list(data)), 3):
@@ -114,18 +115,22 @@ for col in range(0, len(list(data)), 3):
     farr = data.iloc[:, col].dropna().values
     # array of series resistances and drop empty rows
     rarr = data.iloc[:, col + 1].dropna().values
-
+    
     # find low and high frequency values
-    if np.min(farr) < low_freq:
+    if np.min(farr) > low_freq:
         low_freq = np.min(farr)
-    if np.max(farr) > high_freq:
+    if np.max(farr) < high_freq:
         high_freq = np.max(farr)
     
     plt.plot(farr, rarr)
     plot_setup(title='Raw spectra',
                labels=['Frequency', 'Series resistance (Ohm)'])
+plt.axvline(x=low_freq)
+plt.axvline(x=high_freq)
 plt.show()
     
+
+
 
 
 
@@ -136,7 +141,8 @@ array with a shared frequency range. '''
   
 new_arr = np.reshape(np.linspace(low_freq, high_freq, new_length), (-1, 1))
 headers = ['freq']
-
+specnum = 0
+f0list = []
 # loop over each 3rd column in data file, skipping the reactance columns
 for col in range(0, len(list(data)), 3):
 
@@ -149,10 +155,10 @@ for col in range(0, len(list(data)), 3):
                             new_len=new_length,
                 new_xlims=[low_freq, high_freq])
     
-    
+    f0list.append(farr[np.argmax(rarr)])
     # only add to array if spectrum is at least half the length of the longest
     # spectrum. this avoids including small chopped-off peaks
-    specnum = 0
+    
     if farr.max() - farr.min() > 0.5*(high_freq - low_freq):
         new_arr = np.column_stack((new_arr, new_spec[:, 1]))
         plt.plot(new_spec[:, 0], new_spec[:, 1])
@@ -166,7 +172,7 @@ plt.show()
 
 # save the matched arrays
 df = pd.DataFrame(columns=headers, data=new_arr)
-df.to_csv('MATCHED_FREQS_'+filename, index=False)
+df.to_csv('MATCHED_FREQS.csv', index=False)
 
 
 # plot heatmap

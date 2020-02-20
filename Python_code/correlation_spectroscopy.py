@@ -28,12 +28,16 @@ from scipy.interpolate import splev
 
 def contourplot(spec, title='', contours=10):
     # create a contour plot using matplotlib
+    fontsize=16
+    plt.rcParams['axes.linewidth'] = 2
+    plt.rcParams['xtick.labelsize'] = fontsize
+    plt.rcParams['ytick.labelsize'] = fontsize
     x = spec.columns[0:].astype(float)
     y = spec.index[0:].astype(float)
     z = spec.values
     zmax = np.absolute(z).max()
-    plt.figure(figsize=(5,5))
-    plt.title(title)
+    plt.figure(figsize=(6, 6))
+    plt.title(title, fontsize=fontsize)
     plt.contour(x, y, z, contours, colors='black', lw=0.5, alpha=0.5)
     plt.pcolormesh(x, y, z, cmap='jet', vmin=-1*zmax, vmax=zmax)
 
@@ -220,8 +224,8 @@ def corr_spec_2d(df1, df2=None, new_len=200, dynamic=True, contours=20,
 
 #%%
 
-file1 = r'C:\Users\a6q\exp_data\wrinkled-ws2-phase-allrh.csv'
-file2 = r'C:\Users\a6q\exp_data\wrinkled-ws2-phase-allrh.csv'
+file1 = r'C:\Users\a6q\exp_data\wrinkled-ws2-z-increasingrh.csv'
+file2 = r'C:\Users\a6q\exp_data\wrinkled-ws2-phase-increasingrh.csv'
 
 df1 = pd.read_csv(file1)
 df2 = pd.read_csv(file2)
@@ -232,6 +236,6 @@ df2[df2.columns[0]] = np.log10(df2[df2.columns[0]])
 
 
 #%%
-sy, asy, mean_df = corr_spec_2d(df1, df2)
+sy, asy, mean_df = corr_spec_2d(df1, df1)
 
 

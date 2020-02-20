@@ -5,30 +5,31 @@ from matplotlib import rcParams
 from scipy.optimize import curve_fit
 
 def singleBvD_reY(freq, Gp, Cp, Gmax00, D00, f00):
-    # Returns admittance spectrum with single peak.
-    # Spectrum calculation is taken from Equation (2) in:
-    # Yoon, S.M., Cho, N.J. and Kanazawa, K., 2009. Analyzing spur-distorted 
-    # impedance spectra for the QCM. Journal of Sensors, 2009.
-    # inputs:
-    # Gp = conductance offset
-    # Cp = susceptance offset
-    # Gmax00 = maximum of conductance peak
-    # D00 = dissipation
-    # f00 = resonant frequency of peak (peak position) 
-    #construct peak
+    """Returns admittance spectrum with single peak.
+    Spectrum calculation is taken from Equation (2) in:
+    Yoon, S.M., Cho, N.J. and Kanazawa, K., 2009. Analyzing spur-distorted 
+    impedance spectra for the QCM. Journal of Sensors, 2009.
+    inputs:
+    Gp = conductance offset
+    Cp = susceptance offset
+    Gmax00 = maximum of conductance peak
+    D00 = dissipation
+    f00 = resonant frequency of peak (peak position)
+    """
+    # construct peak
     peak = Gmax00 / (1 + (1j/D00)*((freq/f00)-(f00/freq)))
-    #add offsets to spectrum
+    # add offsets to spectrum
     Y = Gp + 1j*2*np.pi*freq*Cp + peak
     G = np.real(Y)
     return G
 
 def get_singlebvd_rlc(fit_params0):
-    # calculate equivalent circuit parameters from BvD fits
-    # from Yoon et al., Analyzing Spur-Distorted Impedance 
-    # Spectra for the QCM, Eqn. 3.
-        
-    #R_fit = []; L_fit = []; C_fit = []
-    #deconstruct popt to calculate equivalent circuit parameters
+    """Calculate equivalent circuit parameters from BvD fits
+    from Yoon et al., Analyzing Spur-Distorted Impedance 
+    Spectra for the QCM, Eqn. 3."""
+
+    # R_fit = []; L_fit = []; C_fit = []
+    # deconstruct popt to calculate equivalent circuit parameters
     '''
     for k in range(len(guess0)):
         G0 = popt_real[3*k+2] 
@@ -40,8 +41,8 @@ def get_singlebvd_rlc(fit_params0):
         L_fit.append(L0)
         C_fit.append(C0)
     '''
-    #FOR SINGLE BvD PEAK:
-    #FIT PARAMS = [Gp, Cp, Gmax00, D00, f00]
+    # FOR SINGLE BvD PEAK:
+    # FIT PARAMS = [Gp, Cp, Gmax00, D00, f00]
     G0 = fit_params0[2]
     f0 = fit_params0[4]
     D0 = fit_params0[3]
@@ -67,14 +68,16 @@ def plot_setup(labels=['X', 'Y'], size=16, setlimits=False, limits=[0,1,0,1],
 
 #%% USER INPUTS
 
-filename = r'C:\Users\a6q\Desktop\Dima\2019-10-03 bareau air h2o all spec.csv'
+#filename = r'C:\Users\a6q\exp_data\2019-11-11_au3\2019-11-11_13-18__qcm_n=3_spectra.csv'
+filename = r'C:\Users\a6q\exp_data\sandro_10th_exp\2019-11-07_20-46__qcm_n=7_spectra.csv'
 
 data = pd.read_csv(filename)
+data = data.dropna()
 
 #%% loop over each spectrum and compare air to water
 
 
-nlist = np.arange(1, 19, 2)
+#nlist = np.arange(1, 19, 2)
 
 '''
 for i in range(0, len(data.columns), 4):
@@ -93,18 +96,23 @@ for i in range(0, len(data.columns), 4):
 
 #%% loop over each spectrum and fit
 
-fitresults = {}
+tot_spec = int(len(data.columns) / 3)
+fitresults = np.zeros((tot_spec, 2))
+spec_num = 0
 
+# last frequency we want to fit in the spectrum
+# (use this to cut off spurious peaks)
+last_freq = 1.484e15
 
-for i in range(0, len(data.columns)-1, 2):
+for i in range(3, len(data.columns), 3):
+    print('spectrum %i / %i' %(i+1, len(data.columns)))
+    
+    # find last idx to probe based on highest frequency variable
+    last_idx = len(data.iloc[:, i][data.iloc[:, i] < last_freq])
     
     
-    col = data.columns[i]
-    fitresults[col] = {'f0': {}, 'D': {}}
-    
-    
-    f = data.iloc[:, i]
-    rs = data.iloc[:, i + 1]
+    f = data.iloc[:last_idx, i]
+    rs = data.iloc[:last_idx, i + 1]
     
     
     # construct guess for peak fit [Gp, Cp, Gmax00, D00, f00]
@@ -112,7 +120,7 @@ for i in range(0, len(data.columns)-1, 2):
     try:
         #fit data
         popt, _ = curve_fit(singleBvD_reY, f, rs,
-                            p0=guess, ftol=1e-14, xtol=1e-14,)
+                            p0=guess, ftol=1e-6, xtol=1e-6,)
         print('fit successful')
     except RuntimeError:
         print('fit failed')
@@ -129,9 +137,23 @@ for i in range(0, len(data.columns)-1, 2):
     plt.show()
 
     
-    fitresults[col]['f0'] = f0
-    fitresults[col]['D'] = d
+    fitresults[spec_num, 0] = f0
+    fitresults[spec_num, 1] = d
+    
+    
+    spec_num += 1
+    
+    #plt.plot(f, rs, c='k', alpha=spec_num/len(data))
+#plt.show()
 
+
+plt.plot(fitresults[:, 0])
+plt.title('f')
+plt.show()
+
+plt.plot(fitresults[:, 1])
+plt.title('D')
+plt.show()
 
 
 '''
